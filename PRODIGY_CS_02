@@ -1,0 +1,71 @@
+from tkinter import Tk, Label, Button, Entry, filedialog
+from PIL import Image
+import os
+
+def encrypt_image():
+    file_path = filedialog.askopenfilename(title="Select Image to Encrypt", filetypes=[("Image Files", "*.png *.jpg *.jpeg")])
+    if not file_path:
+        return
+    
+    key = entry.get()
+    if not key.isdigit():
+        label_note.config(text="Please enter a numeric key!")
+        return
+
+    key = int(key)
+
+    img = Image.open(file_path)
+    img = img.convert("RGB")
+    pixels = img.load()
+
+    for i in range(img.size[0]):
+        for j in range(img.size[1]):
+            r, g, b = pixels[i, j]
+            pixels[i, j] = ((r + key) % 256, (g + key) % 256, (b + key) % 256)
+
+    encrypted_path = os.path.join(os.path.dirname(file_path), "encrypted_image.png")
+    img.save(encrypted_path)
+    label_note.config(text=f"Image encrypted! Saved as:\n{encrypted_path}")
+
+def decrypt_image():
+    file_path = filedialog.askopenfilename(title="Select Image to Decrypt", filetypes=[("Image Files", "*.png *.jpg *.jpeg")])
+    if not file_path:
+        return
+    
+    key = entry.get()
+    if not key.isdigit():
+        label_note.config(text="Please enter a numeric key!")
+        return
+
+    key = int(key)
+
+    img = Image.open(file_path)
+    img = img.convert("RGB")
+    pixels = img.load()
+
+    for i in range(img.size[0]):
+        for j in range(img.size[1]):
+            r, g, b = pixels[i, j]
+            pixels[i, j] = ((r - key) % 256, (g - key) % 256, (b - key) % 256)
+
+    decrypted_path = os.path.join(os.path.dirname(file_path), "decrypted_image.png")
+    img.save(decrypted_path)
+    label_note.config(text=f"Image decrypted! Saved as:\n{decrypted_path}")
+
+# GUI Setup
+root = Tk()
+root.title("Image Encryption Tool")
+root.geometry("500x300")
+root.configure(bg="#2e2e2e")
+
+Label(root, text="Enter Key for Encryption/Decryption:", fg="white", bg="#2e2e2e", font=("Arial", 12)).pack(pady=10)
+entry = Entry(root, font=("Arial", 12), width=30)
+entry.pack()
+
+Button(root, text="Encrypt Image", command=encrypt_image, font=("Arial", 12), width=20, bg="#2196f3", fg="white").pack(pady=10)
+Button(root, text="Decrypt Image", command=decrypt_image, font=("Arial", 12), width=20, bg="#4caf50", fg="white").pack(pady=10)
+
+label_note = Label(root, text="Note: Encrypted image must be decrypted using the same key!", fg="gray", bg="#2e2e2e", font=("Arial", 10))
+label_note.pack(pady=20)
+
+root.mainloop()
