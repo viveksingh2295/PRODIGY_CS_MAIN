@@ -1,0 +1,77 @@
+import tkinter as tk
+from tkinter import ttk
+from scapy.all import sniff, get_if_list, IP, TCP, UDP
+import threading
+from datetime import datetime
+
+class PacketSnifferApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Network Packet Analyzer")
+        self.running = False
+
+        # Interface Dropdown
+        self.iface_var = tk.StringVar()
+        self.iface_dropdown = ttk.Combobox(root, textvariable=self.iface_var, values=get_if_list(), state="readonly")
+        self.iface_dropdown.pack(pady=10)
+        self.iface_dropdown.set(get_if_list()[0])
+
+        # Treeview for packet display
+        self.tree = ttk.Treeview(root, columns=("Time", "Protocol", "Source", "Destination", "Length"), show="headings")
+        for col in self.tree["columns"]:
+            self.tree.heading(col, text=col)
+            self.tree.column(col, anchor=tk.CENTER)
+        self.tree.pack(padx=20, pady=10, fill=tk.BOTH, expand=True)
+
+        # Scrollbar
+        scrollbar = ttk.Scrollbar(root, orient="vertical", command=self.tree.yview)
+        self.tree.configure(yscroll=scrollbar.set)
+        scrollbar.pack(side="right", fill="y")
+
+        # Buttons
+        button_frame = tk.Frame(root)
+        button_frame.pack(pady=10)
+
+        self.start_btn = tk.Button(button_frame, text="Start Capture", bg="green", fg="white", command=self.start_sniffing)
+        self.start_btn.pack(side="left", padx=10)
+
+        self.stop_btn = tk.Button(button_frame, text="Stop", bg="red", fg="white", state="disabled", command=self.stop_sniffing)
+        self.stop_btn.pack(side="left", padx=10)
+
+    def packet_callback(self, packet):
+        if not IP in packet:
+            return
+        src = packet[IP].src
+        dst = packet[IP].dst
+        length = len(packet)
+        proto = "Other"
+        if TCP in packet:
+            proto = "TCP"
+        elif UDP in packet:
+            proto = "UDP"
+
+        self.tree.insert("", tk.END, values=(datetime.now().strftime("%H:%M:%S"), proto, src, dst, length))
+
+    def start_sniffing(self):
+        self.running = True
+        self.start_btn.config(state="disabled")
+        self.stop_btn.config(state="normal")
+        threading.Thread(target=self.sniff_packets, daemon=True).start()
+
+    def sniff_packets(self):
+        try:
+            iface = self.iface_var.get()
+            sniff(prn=self.packet_callback, iface=iface, store=False, stop_filter=lambda x: not self.running)
+        except Exception as e:
+            print("Error starting sniffer:", e)
+
+    def stop_sniffing(self):
+        self.running = False
+        self.start_btn.config(state="normal")
+        self.stop_btn.config(state="disabled")
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    root.geometry("900x500")
+    app = PacketSnifferApp(root)
+    root.mainloop()
